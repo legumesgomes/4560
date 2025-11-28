@@ -31,12 +31,12 @@
                     transition: background-color 0.2s ease;
                 }
 
-                .ls-tab-card--catalog {
+                .ls-tab-card--solid {
                     background: #ffffff;
                     color: #1a1a1a;
                 }
 
-                .ls-tab-card--catalog .ls-tab-buttons {
+                .ls-tab-card--solid .ls-tab-buttons {
                     border-bottom-color: rgba(0, 0, 0, 0.1);
                 }
 
@@ -195,8 +195,7 @@
                                 @endif
 
                                 {{-- IMPORTANTE: usa rota nomeada do plugin --}}
-                                <form method="POST"
-                                      action="{{ route('leads01.submit', $leadCampaign->slug) }}">
+                                <form method="POST" action="{{ route('leads01.public.submit', $leadCampaign->slug) }}">
                                     @csrf
 
                                     @foreach($leadCampaign->fields as $field)
@@ -308,11 +307,9 @@
 
                     function updateTabCardBackground(targetId) {
                         if (!tabCard) return;
-                        if (targetId === 'ls-tab-catalog') {
-                            tabCard.classList.add('ls-tab-card--catalog');
-                        } else {
-                            tabCard.classList.remove('ls-tab-card--catalog');
-                        }
+                        const shouldBeSolid = ['ls-tab-catalog', 'ls-tab-leads'].includes(targetId);
+
+                        tabCard.classList.toggle('ls-tab-card--solid', shouldBeSolid);
                     }
 
                     function setActive(targetId) {
