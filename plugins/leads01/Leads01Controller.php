@@ -216,7 +216,7 @@ class Leads01Controller extends Controller
             ->firstOrFail();
 
         $rules = [];
-        foreach ($campaign->fields as $field) {
+        
  $inputMap = [];
         foreach ($campaign->fields as $field) {
             $baseRule  = $field->required ? 'required' : 'nullable';
@@ -274,30 +274,44 @@ class Leads01Controller extends Controller
 		
 		
 		  $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
-        $thankYouMessage   = $configuredMessage !== ''
+        $thankYouMessage = $configuredMessage !== ''
             ? $configuredMessage
-            : 'Lead enviado com sucesso!';
+ : 'Lead enviado com sucesso!';
 
         session()->put("leads01_public_submitted.{$campaign->slug}", $thankYouMessage);
-		
-		session()->flash('leads01_profile_success', [
+
+        session()->flash('leads01_profile_success', [
             'user_id'  => $campaign->user_id,
             'campaign' => $campaign->name,
             'slug'     => $campaign->slug,
             'message'  => $thankYouMessage,
         ]);
 
-if ($request->expectsJson()) {
+        session()->flash('success', $thankYouMessage);
+
+        if ($request->expectsJson()) {
             return response()->json(['message' => $thankYouMessage]);
         }
+		
+		
+		
+		
+		  $fields = $campaign->fields()
+            ->orderBy('sort_order')
+            ->get();
 
-         $username = $campaign->user->name ?? null;
-        $redirectRoute = $username
-            ? route('leads01.public', ['username' => $username])
-            : url()->previous();
-
-        return redirect($redirectRoute)
-            ->with('success', $thankYouMessage);
+        return $this->renderView('public.form', [
+            'campaign' => $campaign,
+            'fields'   => $fields,
+        ])->with('success', $thankYouMessage);
+		
+		
+		
+		
+		
+		
+		
+		
     }
 
     protected function resolveInputKey(Request $request, $field): string
