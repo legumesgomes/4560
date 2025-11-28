@@ -9,15 +9,24 @@
                             <p class="text-muted">{{ $campaign->description }}</p>
                         @endif
 
-                          @php
-                             $sessionThankYou = session()->get('leads01_public_submitted.' . $campaign->slug);
-                            $flashSuccess = session('success');
-                            $thankYouMessage = $sessionThankYou ?? $flashSuccess ?? '';
-                            $hasSubmitted = $sessionThankYou !== null || $flashSuccess !== null;
-                        @endphp
+                         
+						
+						
+						 @php
+        $sessionThankYou = session()->get('leads01_public_submitted.' . $campaign->slug);
+        $flashSuccess = session('success');
+        $thankYouMessage = $sessionThankYou ?? $flashSuccess ?? '';
+        $hasSubmitted = $sessionThankYou !== null || $flashSuccess !== null;
+        $oldInput = $oldInput ?? [];
+    @endphp
+						
+						
+						
+						
 
-                         @if($hasSubmitted && $thankYouMessage !== '')
+                          @if($hasSubmitted && $thankYouMessage !== '')
                             <div class="alert alert-success">{{ $thankYouMessage }}</div>
+						@endif
                         @if(session('error'))
                             <div class="alert alert-danger">{{ session('error') }}</div>
                         @endif
@@ -65,29 +74,42 @@
                                         </label>
 
                                         @switch($type)
-                                            @case('email')
-                                                <input type="email" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="150">
-                                                @break
-                                            @case('number')
-                                                <input type="number" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>
-                                                @break
-                                            @case('tel')
-                                                <input type="tel" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="30">
-                                                @break
-                                            @case('textarea')
-                                                <textarea name="{{ $inputName }}" class="form-control" rows="3" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>{{ old($inputName) }}</textarea>
-                                                @break
-                                            @case('select')
-                                                <select name="{{ $inputName }}" class="form-select" @if($field->required) required @endif>
-                                                    <option value="">Selecione...</option>
-                                                    @foreach($options as $option)
-                                                        <option value="{{ $option }}" {{ old($inputName) == $option ? 'selected' : '' }}>{{ $option }}</option>
-                                                    @endforeach
-                                                </select>
-                                                @break
+										
+										
+										
+										
+										
+										
+										     @case('email')
+                                                  <input type="email" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="150">
+                                                  @break
+                                              @case('number')
+                                                  <input type="number" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>
+                                                  @break
+                                              @case('tel')
+                                                  <input type="tel" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="30">
+                                                  @break
+                                              @case('textarea')
+                                                  <textarea name="{{ $inputName }}" class="form-control" rows="3" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>{{ old($inputName, $oldInput[$inputName] ?? '') }}</textarea>
+                                                  @break
+                                              @case('select')
+                                                  <select name="{{ $inputName }}" class="form-select" @if($field->required) required @endif>
+                                                      <option value="">Selecione...</option>
+                                                      @foreach($options as $option)
+                                                          <option value="{{ $option }}" {{ old($inputName, $oldInput[$inputName] ?? '') == $option ? 'selected' : '' }}>{{ $option }}</option>
+                                                      @endforeach
+                                                  </select>
+                                                  @break
                                             @default
-                                                <input type="text" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="255">
-                                        @endswitch
+                            <input type="text" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="255">
+                        @endswitch
+										
+										
+										
+										
+										
+										
+										
                                     </div>
                                 @endforeach
 
