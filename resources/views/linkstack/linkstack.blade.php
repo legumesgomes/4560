@@ -1,152 +1,43 @@
 @extends('linkstack.layout')
 
 @section('content')
-    @push('linkstack-head')
-        @include('linkstack.modules.meta')
-        @include('linkstack.modules.assets')
-    @endpush
 
-    @push('linkstack-head-end')
-        @foreach($information as $info)
-            @include('linkstack.modules.theme')
-        @endforeach
 
-        @php
-            // Normaliza flags para facilitar o uso no Blade
-            $hasCatalog = $catalogEnabled ?? false;
-            // Se tiver variável $leadsEnabled vinda do controller, respeita.
-            // Caso contrário, considera que existe leads se $leadCampaign não estiver vazio.
-            $hasLeads   = isset($leadsEnabled)
-                ? ($leadsEnabled && !empty($leadCampaign))
-                : (!empty($leadCampaign));
-        @endphp
+ @php
+        // Normaliza flags para facilitar o uso no Blade
+        $hasCatalog = $catalogEnabled ?? false;
+        // Se tiver variável $leadsEnabled vinda do controller, respeita.
+        // Caso contrário, considera que existe leads se $leadCampaign não estiver vazio.
+        $hasLeads   = isset($leadsEnabled)
+            ? ($leadsEnabled && !empty($leadCampaign))
+            : (!empty($leadCampaign));
+    @endphp
 
-        @if($hasCatalog || $hasLeads)
-            <style>
-                .ls-tab-card {
-                    background: transparent;
-                    border-radius: 16px;
-                    box-shadow: 0 15px 40px rgba(0,0,0,.08);
-                    padding: 1rem;
-                    transition: background-color 0.2s ease;
-                }
 
-                .ls-tab-card--solid {
-                    background: #ffffff;
-                    color: #1a1a1a;
-                }
-
-                .ls-tab-card--solid .ls-tab-buttons {
-                    border-bottom-color: rgba(0, 0, 0, 0.1);
-                }
-
-                .ls-tab-buttons {
-                    display: flex;
-                    gap: 1.25rem;
-                    overflow-x: auto;
-                    padding-bottom: 0.35rem;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.25);
-                    margin-bottom: 1rem;
-                    scrollbar-width: none;
-                }
-
-                .ls-tab-buttons::-webkit-scrollbar {
-                    display: none;
-                }
-
-                .ls-tab-button {
-                    background: transparent;
-                    border: none;
-                    color: inherit;
-                    font-size: 0.95rem;
-                    font-weight: 500;
-                    line-height: 1.2;
-                    padding: 0.25rem 0;
-                    position: relative;
-                    white-space: nowrap;
-                    opacity: 0.6;
-                    transition: opacity 0.2s ease;
-                }
-
-                .ls-tab-button::after {
-                    content: '';
-                    position: absolute;
-                    left: 0;
-                    bottom: 0;
-                    width: 100%;
-                    height: 2px;
-                    background-color: transparent;
-                    transition: background-color 0.2s ease;
-                }
-
-                .ls-tab-button.active {
-                    opacity: 1;
-                }
-
-                .ls-tab-button.active::after {
-                    background-color: currentColor;
-                }
-
-                .ls-tab-pane { display: none; }
-                .ls-tab-pane.active { display: block; }
-            </style>
-        @endif
-    @endpush
-
-    @push('linkstack-body-start')
-        @include('linkstack.modules.admin-bar')
-        @include('linkstack.modules.share-button')
-        @include('linkstack.modules.report-icon')
-    @endpush
 
     @push('linkstack-content')
-        @foreach($information as $info)
-            @include('linkstack.elements.profile-hero')
-            @include('linkstack.elements.heading')
-            @include('linkstack.elements.bio')
-        @endforeach
-
-        @include('linkstack.elements.icons')
-
-        @php
-            $hasCatalog = $catalogEnabled ?? false;
-            $hasLeads   = isset($leadsEnabled)
-                ? ($leadsEnabled && !empty($leadCampaign))
-                : (!empty($leadCampaign));
-        @endphp
-
         @if($hasCatalog || $hasLeads)
-            <div class="ls-tab-card">
-                <div class="ls-tab-buttons" role="tablist">
-                    {{-- Aba Perfil (sempre) --}}
-                    <button
-                        class="ls-tab-button active"
-                        type="button"
-                        data-ls-tab-target="ls-tab-profile"
-                        aria-selected="true">
+            <div class="ls-tab-card ls-tab-card--solid">
+                <div class="ls-tab-header">
+                    <button class="ls-tab-button active"
+                            data-ls-tab-target="ls-tab-profile"
+                            aria-selected="true">
                         Perfil
                     </button>
 
-                    {{-- Aba Catálogo (se habilitado) --}}
                     @if($hasCatalog)
-                        <button
-                            class="ls-tab-button"
-                            type="button"
-                            data-ls-tab-target="ls-tab-catalog"
-                            data-catalog-url="{{ $catalogEmbedUrl }}"
-                            aria-selected="false">
+                        <button class="ls-tab-button"
+                                data-ls-tab-target="ls-tab-catalog"
+                                aria-selected="false">
                             Catálogo
                         </button>
                     @endif
 
-                    {{-- Aba Formulário (se houver campanha válida) --}}
                     @if($hasLeads)
-                        <button
-                            class="ls-tab-button"
-                            type="button"
-                            data-ls-tab-target="ls-tab-leads"
-                            aria-selected="false">
-                            {{ $leadCampaign->name ?? 'Formulário' }}
+                        <button class="ls-tab-button"
+                                data-ls-tab-target="ls-tab-leads"
+                                aria-selected="false">
+                            Leads
                         </button>
                     @endif
                 </div>
@@ -182,6 +73,10 @@
                                     <div class="alert alert-success">
                                         {{ session('success') }}
                                     </div>
+                                @elseif(session('error'))
+                                    <div class="alert alert-danger">
+                                        {{ session('error') }}
+                                    </div>
                                 @endif
 
                                 @if($errors->any())
@@ -194,8 +89,10 @@
                                     </div>
                                 @endif
 
+                                @if(!session('success'))
                                 {{-- IMPORTANTE: usa rota nomeada do plugin --}}
-                                <form method="POST" action="{{ route('leads01.public.submit', $leadCampaign->slug) }}">
+                                <form method="POST"
+                                      action="{{ route('leads01.public.submit', $leadCampaign->slug) }}">
                                     @csrf
 
                                     @foreach($leadCampaign->fields as $field)
@@ -262,6 +159,7 @@
                                         Enviar
                                     </button>
                                 </form>
+                                @endif
 
                                 @if($leadCampaign->thank_you_message)
                                     <p class="text-muted small mt-2">
@@ -307,6 +205,7 @@
 
                     function updateTabCardBackground(targetId) {
                         if (!tabCard) return;
+
                         const shouldBeSolid = ['ls-tab-catalog', 'ls-tab-leads'].includes(targetId);
 
                         tabCard.classList.toggle('ls-tab-card--solid', shouldBeSolid);
@@ -336,48 +235,30 @@
                         }
 
                         updateTabCardBackground(targetId);
-                    }
 
-                    async function loadCatalog(button) {
-                        if (catalogLoaded) return;
-                        const url = button.dataset.catalogUrl;
-                        const placeholder = document.getElementById('ls-catalog-placeholder');
-                        if (!url || !placeholder) return;
-
-                        placeholder.textContent = 'Carregando catálogo...';
-
-                        try {
-                            const response = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
-                            const html = await response.text();
-                            placeholder.innerHTML = html;
-
-                            placeholder.querySelectorAll('script').forEach(function (script) {
-                                const clone = document.createElement('script');
-                                if (script.src) {
-                                    clone.src = script.src;
-                                } else {
-                                    clone.textContent = script.textContent;
-                                }
-                                document.body.appendChild(clone);
-                            });
-
-                            catalogLoaded = true;
-                            placeholder.dataset.loaded = 'true';
-                        } catch (e) {
-                            placeholder.textContent = 'Não foi possível carregar o catálogo.';
+                        if (targetId === 'ls-tab-catalog' && !catalogLoaded) {
+                            const placeholder = document.getElementById('ls-catalog-placeholder');
+                            fetch("{{ route('products.catalog', ['username' => $publicProfile->name]) }}")
+                                .then(resp => resp.text())
+                                .then(html => {
+                                    const pane = document.getElementById('ls-tab-catalog');
+                                    if (pane) {
+                                        pane.innerHTML = html;
+                                        catalogLoaded = true;
+                                    }
+                                })
+                                .catch(() => {
+                                    if (placeholder) {
+                                        placeholder.textContent = 'Não foi possível carregar o catálogo.';
+                                    }
+                                });
                         }
                     }
 
-                    buttons.forEach(function (button) {
-                        button.addEventListener('click', async function () {
-                            const targetId = button.dataset.lsTabTarget;
-                            if (!targetId) return;
-
+                    buttons.forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            const targetId = btn.dataset.lsTabTarget;
                             setActive(targetId);
-
-                            if (targetId === 'ls-tab-catalog' && button.dataset.catalogUrl) {
-                                await loadCatalog(button);
-                            }
                         });
                     });
 
