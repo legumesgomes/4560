@@ -9,9 +9,16 @@
                             <p class="text-muted">{{ $campaign->description }}</p>
                         @endif
 
-                        @if(session('success'))
-                            <div class="alert alert-success">{{ session('success') }}</div>
-                        @endif
+                          @php
+                            $customThankYou = trim((string) ($campaign->thank_you_message ?? ''));
+                            $hasSuccess = session()->has('success');
+                            $thankYouMessage = $customThankYou !== ''
+                                ? $customThankYou
+                                : (string) session('success');
+                        @endphp
+
+                        @if($hasSuccess && $thankYouMessage !== '')
+                            <div class="alert alert-success">{{ $thankYouMessage }}</div>
                         @if(session('error'))
                             <div class="alert alert-danger">{{ session('error') }}</div>
                         @endif
@@ -27,9 +34,12 @@
                         @endif
 
                         @if(!session('success'))
-                        <form method="POST" action="{{ route('leads01.public.submit', $campaign->slug) }}">
+                        <form method="POST" action="{{ route('leads01.submit', $campaign->slug) }}">
                             @csrf
 
+							 <fieldset @if($hasSuccess) disabled aria-disabled="true" @endif>
+							
+							
                             @foreach($fields as $field)
                                 @php
                                     $inputName = 'field_' . $field->id;
@@ -84,8 +94,11 @@
                                     @endswitch
                                 </div>
                             @endforeach
+</fieldset>
 
-                            <button type="submit" class="btn btn-primary w-100">Enviar</button>
+                            <button type="submit" class="btn btn-primary w-100" @if($hasSuccess) disabled aria-disabled="true" @endif>
+                                {{ $hasSuccess ? 'Enviado' : 'Enviar' }}
+                            </button>
                         </form>
                         @endif
                     </div>
