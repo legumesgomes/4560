@@ -1,604 +1,203 @@
-<?php
+<x-guest-layout>
+    <div class="container py-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <h1 class="h4 mb-2">{{ $campaign->name }}</h1>
+                        @if(!empty($campaign->description))
+                            <p class="text-muted">{{ $campaign->description }}</p>
+                        @endif
 
-namespace App\Providers\plugins\leads01;
+                        @php
+						
+						
+						
+						
+						     $sessionThankYou = session()->get('leads01_public_submitted.' . $campaign->slug);
+                            $flashSuccess = session('success');
+                            $thankYouMessage = $sessionThankYou ?? $flashSuccess ?? '';
+                            $hasSubmitted = $sessionThankYou !== null || $flashSuccess !== null;
+                            $oldInput = $oldInput ?? [];
+                        @endphp
 
-// Carrega os Models manualmente antes de usar
-$modelsPath = base_path('plugins/leads01/Models');
-if (!class_exists('plugins\\leads01\\Models\\LeadField')) {
-    require_once $modelsPath . '/LeadField.php';
-}
-if (!class_exists('plugins\\leads01\\Models\\LeadEntry')) {
-    require_once $modelsPath . '/LeadEntry.php';
-}
-if (!class_exists('plugins\\leads01\\Models\\LeadCampaign')) {
-    require_once $modelsPath . '/LeadCampaign.php';
-}
+                        <div id="leads01-feedback">
+                            @if($hasSubmitted && $thankYouMessage !== '')
+                                <div class="alert alert-success">{{ $thankYouMessage }}</div>
+                            @endif
+                            @if(session('error'))
+                                <div class="alert alert-danger">{{ session('error') }}</div>
+                            @endif
+                            @if($errors->any())
+                                <div class="alert alert-danger">
+                                    <ul class="mb-0">
+                                        @foreach($errors->all() as $error)
+                                            <li>{{ $error }}</li>
+                                        @endforeach
+                                    </ul>
+                                </div>
+                            @endif
+                            <div class="alert alert-success d-none" id="leads01-success"></div>
+                            <div class="alert alert-danger d-none" id="leads01-errors">
+                                <ul class="mb-0" id="leads01-errors-list"></ul>
+                            </div>
+                        </div>
 
-// Cria aliases no namespace global (com \\ no início)
-if (!class_exists('\\LeadCampaign', false)) {
-    class_alias('plugins\\leads01\\Models\\LeadCampaign', '\\LeadCampaign');
-}
-if (!class_exists('\\LeadEntry', false)) {
-    class_alias('plugins\\leads01\\Models\\LeadEntry', '\\LeadEntry');
-}
-if (!class_exists('\\LeadField', false)) {
-    class_alias('plugins\\leads01\\Models\\LeadField', '\\LeadField');
-}
+                        @if(!$hasSubmitted)
+                            <form method="POST" id="leads01-form" action="{{ route('leads01.public.submit', $campaign->slug) }}">
+                                @csrf
 
-use App\Http\Controllers\Controller;
-use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Cookie;
+                                @foreach($fields as $field)
+                                    @php
+                                        $inputName = $field->field_name ?? $field->name ?? ('field_' . $field->id);
+                                        $type = $field->field_type ?? $field->type ?? 'text';
 
-class Leads01Controller extends Controller
-{
-    public const FIELD_LIMIT = 10;
+                                        $optionsRaw = $field->options ?? [];
+                                        if (is_string($optionsRaw)) {
+                                            $decoded = json_decode($optionsRaw, true);
+                                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                                $optionsRaw = $decoded;
+                                            } else {
+                                                $optionsRaw = preg_split("/[\r\n]+/", $optionsRaw);
+                                            }
+                                        }
+                                        $options = collect($optionsRaw)
+                                            ->filter(fn($opt) => trim((string) $opt) !== '')
+                                            ->map(fn($opt) => trim((string) $opt))
+                                            ->values();
+                                    @endphp
 
-    /**
-     * Ativa / desativa a visibilidade de uma campanha na página pública.
-     * Regra: apenas UMA campanha por usuário pode estar com visivel = 1.
-     */
-    public function toggleVisible(int $id)
-    {
-        $user = auth()->user();
+                                    <div class="mb-3">
+                                        <label class="form-label">{{ $field->label }} @if($field->required) <span class="text-danger">* </span> @endif</label>
 
-        $campaign = \LeadCampaign::where('user_id', $user->id)->findOrFail($id);
+                                        @switch($type)
+                                            @case('email')
+                                                <input type="email" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="150">
+                                                @break
+                                            @case('number')
+                                                <input type="number" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>
+                                                @break
+                                            @case('tel')
+                                                <input type="tel" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="30">
+                                                @break
+                                            @case('textarea')
+                                                <textarea name="{{ $inputName }}" class="form-control" rows="3" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>{{ old($inputName, $oldInput[$inputName] ?? '') }}</textarea>
+                                                @break
+                                            @case('select')
+                                                <select name="{{ $inputName }}" class="form-select" @if($field->required) required @endif>
+                                                    <option value="">Selecione...</option>
+                                                    @foreach($options as $option)
+                                                        <option value="{{ $option }}" {{ old($inputName, $oldInput[$inputName] ?? '') == $option ? 'selected' : '' }}>{{ $option }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @break
+                                            @default
+                                                <input type="text" name="{{ $inputName }}" class="form-control" value="{{ old($inputName, $oldInput[$inputName] ?? '') }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="255">
+                                        @endswitch
+                                    </div>
+                                @endforeach
 
-        // Se já está visível, apenas oculta (nenhuma visível)
-        if ((int) $campaign->visivel === 1) {
-            $campaign->visivel = 0;
-            $campaign->save();
+                                <button type="submit" class="btn btn-primary w-100" id="leads01-submit">
+                                    Enviar
+                                </button>
+                            </form>
+                        @endif
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            return back()->with('success', 'Formulário ocultado da página pública.');
-        }
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const form = document.getElementById('leads01-form');
+            if (!form || !window.fetch || !window.FormData) {
+                return;
+            }
 
-        // Se NÃO está visível:
-        // 1) zera todas as campanhas do usuário
-        // 2) marca só esta como visível
-        DB::transaction(function () use ($user, $campaign) {
-            \LeadCampaign::where('user_id', $user->id)->update(['visivel' => 0]);
-            $campaign->visivel = 1;
-            $campaign->save();
+            const successBox = document.getElementById('leads01-success');
+            const errorsBox = document.getElementById('leads01-errors');
+            const errorsList = document.getElementById('leads01-errors-list');
+            const submitButton = document.getElementById('leads01-submit');
+
+            const toggleButton = (disable, text = null) => {
+                if (!submitButton) return;
+                submitButton.disabled = disable;
+                if (text !== null) {
+                    submitButton.dataset.originalText = submitButton.dataset.originalText || submitButton.textContent;
+                    submitButton.textContent = text;
+                } else if (submitButton.dataset.originalText) {
+                    submitButton.textContent = submitButton.dataset.originalText;
+                }
+            };
+
+            const clearMessages = () => {
+                if (successBox) {
+                    successBox.classList.add('d-none');
+                    successBox.textContent = '';
+                }
+                if (errorsBox && errorsList) {
+                    errorsBox.classList.add('d-none');
+                    errorsList.innerHTML = '';
+                }
+            };
+
+            const showErrors = (errors) => {
+                if (!errorsBox || !errorsList) return;
+                errorsList.innerHTML = '';
+                Object.values(errors).forEach((messages) => {
+                    (Array.isArray(messages) ? messages : [messages]).forEach((message) => {
+                        const li = document.createElement('li');
+                        li.textContent = message;
+                        errorsList.appendChild(li);
+                    });
+                });
+                errorsBox.classList.remove('d-none');
+            };
+
+            const showSuccess = (message) => {
+                if (!successBox) return;
+                successBox.textContent = message || 'Lead enviado com sucesso!';
+                successBox.classList.remove('d-none');
+                form.classList.add('d-none');
+            };
+
+            form.addEventListener('submit', async (event) => {
+                event.preventDefault();
+                clearMessages();
+                toggleButton(true, 'Enviando...');
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: form.method,
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                        body: new FormData(form),
+                    });
+
+                    const data = await response.json().catch(() => ({}));
+
+                    if (response.ok) {
+                        showSuccess(data.message);
+                        form.reset();
+                        return;
+                    }
+
+                    if (response.status === 422 && data.errors) {
+                        showErrors(data.errors);
+                        return;
+                    }
+
+                    showErrors({ geral: [data.message || 'Não foi possível enviar o lead. Tente novamente.'] });
+                } catch (error) {
+                    showErrors({ conexao: ['Falha de conexão. Tente novamente.'] });
+                } finally {
+                    toggleButton(false);
+                }
+            });
         });
-
-        return back()->with('success', 'Formulário definido como visível na página pública.');
-    }
-
-    public function index()
-    {
-        $user = auth()->user();
-
-        $campaigns = \LeadCampaign::where('user_id', $user->id)
-            ->withCount('entries')
-            ->latest()
-            ->paginate(15);
-
-        return $this->renderView('index', compact('campaigns'));
-    }
-
-    public function create()
-    {
-        return $this->renderView('create');
-    }
-
-    public function store(Request $request)
-    {
-        $user = auth()->user();
-
-        $validated = $this->validateCampaign($request);
-        $fields    = $this->validateFields($request);
-
-        $campaign = \LeadCampaign::create([
-            'user_id'           => $user->id,
-            'name'              => $validated['name'],
-            'slug'              => $this->uniqueSlug($validated['name']),
-            'description'       => $validated['description'] ?? null,
-            'thank_you_message' => $validated['thank_you_message'] ?? null,
-            'status'            => $validated['status'],
-            'visivel'           => 0, // nova campanha começa não visível
-        ]);
-
-        $this->persistFields($campaign, $fields);
-
-        return redirect()->route('leads01.index')
-            ->with('success', 'Campanha criada e campos salvos com sucesso.');
-    }
-
-    public function edit(int $id)
-    {
-        $campaign = $this->findCampaign($id);
-
-        return $this->renderView('edit', [
-            'campaign' => $campaign,
-            'fields'   => $campaign->fields()->orderBy('sort_order')->get(),
-        ]);
-    }
-
-    public function update(Request $request, int $id)
-    {
-        $campaign = $this->findCampaign($id);
-
-        $validated = $this->validateCampaign($request, $campaign->id);
-        $fields    = $this->validateFields($request);
-
-        $campaign->update([
-            'name'              => $validated['name'],
-            'description'       => $validated['description'] ?? null,
-            'thank_you_message' => $validated['thank_you_message'] ?? null,
-            'status'            => $validated['status'],
-        ]);
-
-        $this->persistFields($campaign, $fields);
-
-        return redirect()->route('leads01.index')
-            ->with('success', 'Campanha atualizada com sucesso.');
-    }
-
-    public function destroy(int $id)
-    {
-        $campaign = $this->findCampaign($id);
-        $campaign->entries()->delete();
-        $campaign->fields()->delete();
-        $campaign->delete();
-
-        return redirect()->route('leads01.index')
-            ->with('success', 'Campanha excluída com sucesso.');
-    }
-
-    public function leads(int $id)
-    {
-        $campaign = $this->findCampaign($id);
-
-        $entries = $campaign->entries()
-            ->latest()
-            ->paginate(20);
-
-        return $this->renderView('leads.index', compact('campaign', 'entries'));
-    }
-
-    public function showLead(int $id, int $entryId)
-    {
-        $campaign = $this->findCampaign($id);
-
-        $entry = $campaign->entries()
-            ->with(['fields', 'user'])
-            ->findOrFail($entryId);
-
-        return $this->renderView('leads.show', [
-            'campaign' => $campaign,
-            'entry'    => $entry,
-        ]);
-    }
-
-    public function publicList(string $username)
-    {
-        $user = User::where('name', $username)->firstOrFail();
-
-        $campaigns = \LeadCampaign::where('user_id', $user->id)
-            ->where('status', 'active')
-            ->withCount('entries')
-            ->latest()
-            ->get();
-
-         $flash = session('leads01_profile_success');
-        $profileSuccess = is_array($flash) && ($flash['user_id'] ?? null) === $user->id
-            ? $flash
-            : null;
-
-        return $this->renderView('public.list', [
-            'user'            => $user,
-            'campaigns'       => $campaigns,
-            'profileSuccess'  => $profileSuccess,
-        ]);
-    }
-
-    public function publicForm(string $slug)
-    {
-        $campaign = \LeadCampaign::where('slug', $slug)
-            ->where('status', 'active')
-            ->firstOrFail();
-
-        $fields = $campaign->fields()
-            ->orderBy('sort_order')
-            ->get();
-
-        return $this->renderView('public.form', compact('campaign', 'fields'));
-    }
-
-    public function submit(Request $request, string $slug)
-    {
-        $campaign = \LeadCampaign::where('slug', $slug)
-            ->where('status', 'active')
-            ->with('fields')
-            ->firstOrFail();
-
-        $rules = [];
-        
- $inputMap = [];
-        foreach ($campaign->fields as $field) {
-            $baseRule  = $field->required ? 'required' : 'nullable';
-            $fieldType = $field->field_type ?? $field->type ?? 'text';
-            $inputName = $this->resolveInputKey($request, $field);
-
-            $rules[$inputName] = $baseRule . '|' . $this->fieldRule($fieldType);
-            $inputMap[$field->id] = $inputName;
-        }
-
-         $validator = validator($request->all(), $rules);
-		
-		
-		
-		
-		
-		
-		
-		
-		$isAjax = $request->expectsJson() || $request->ajax();
-
-        if ($validator->fails()) {
-            if ($isAjax) {
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-                return response()->json(['errors' => $validator->errors()], 422);
-            }
-
-            $fields = $campaign->fields()
-                ->orderBy('sort_order')
-                ->get();
-
-            $view = $this->renderView('public.form', [
-                'campaign'  => $campaign,
-                'fields'    => $fields,
-                'oldInput'  => $request->all(),
-            ]);
-
-            return response(
-                $view->with('errors', (new \Illuminate\Support\ViewErrorBag())->put('default', $validator->errors())),
-                422
-            );
-        }
-
-        $validated = $validator->validated();
-
-        $entryData = [];
-        foreach ($campaign->fields as $field) {
-            $inputName = $inputMap[$field->id] ?? $this->resolveInputKey($request, $field);
-            $value = str_contains($inputName, '.')
-                ? data_get($validated, $inputName)
-                : ($validated[$inputName] ?? null);
-            $key = $field->field_name
-                ?? ($field->name ?? ('field_' . $field->id));
-
-            $entryData[$key] = $value;
-        }
-
-        \LeadEntry::create([
-            'campaign_id' => $campaign->id,
-            'user_id'     => $campaign->user_id,
-            'data'        => $entryData,
-            'ip_address'  => $request->ip(),
-            'user_agent'  => (string) $request->header('User-Agent'),
-        ]);
-
-		
-		
-		  $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
-        $thankYouMessage = $configuredMessage !== ''
-            ? $configuredMessage
- : 'Lead enviado com sucesso!';
-
-        session()->put("leads01_public_submitted.{$campaign->slug}", $thankYouMessage);
-
-        session()->flash('leads01_profile_success', [
-            'user_id'  => $campaign->user_id,
-            'campaign' => $campaign->name,
-            'slug'     => $campaign->slug,
-            'message'  => $thankYouMessage,
-        ]);
-
-        session()->flash('success', $thankYouMessage);
-
-        if ($isAjax) {
-            return response()->json(['message' => $thankYouMessage]);
-        }
-		
-		
-		
-		
-		  $fields = $campaign->fields()
-            ->orderBy('sort_order')
-            ->get();
-
-        return $this->renderView('public.form', [
-            'campaign' => $campaign,
-            'fields'   => $fields,
-        ])->with('success', $thankYouMessage);
-		
-		
-		
-		
-		
-		
-		
-		
-    }
-
-    protected function resolveInputKey(Request $request, $field): string
-    {
-        $candidates = [
-            $field->field_name ?? null,
-            $field->name ?? null,
-            'field_' . $field->id,
-            'fields.' . $field->id,
-        ];
-
-        foreach ($candidates as $candidate) {
-            if (!$candidate) {
-                continue;
-            }
-
-            if ($request->has($candidate)) {
-                return $candidate;
-            }
-        }
-
-        return 'field_' . $field->id;
-    }
-
-    public function saveFields(Request $request, int $id)
-    {
-        $campaign = $this->findCampaign($id);
-
-        $incoming = $request->input('fields', []);
-
-        if (!is_array($incoming) || count($incoming) === 0) {
-            return response()->json([
-                'errors' => ['fields' => 'Envie pelo menos um campo para salvar.'],
-            ], 422);
-        }
-
-        $normalized = [];
-        foreach ($incoming as $field) {
-            $fieldType = strtolower((string) ($field['field_type'] ?? ($field['type'] ?? 'text')));
-
-            $normalized[] = [
-                'label'       => trim((string) ($field['label'] ?? '')),
-                'field_name'  => trim((string) ($field['field_name'] ?? ($field['name'] ?? ''))),
-                'field_type'  => $fieldType,
-                'required'    => (bool) ($field['required'] ?? false),
-                'placeholder' => trim((string) ($field['placeholder'] ?? '')),
-                'options'     => $this->normalizeOptions($field['options'] ?? [], $fieldType),
-                'sort_order'  => $field['sort_order'] ?? $field['order'] ?? null,
-            ];
-        }
-
-        $request->replace(['fields' => $normalized]);
-
-        try {
-            $fields = $this->validateFields($request);
-        } catch (ValidationException $e) {
-            return response()->json(['errors' => $e->errors()], 422);
-        }
-
-        $this->persistFields($campaign, $fields);
-
-        return response()->json(['message' => 'Campos salvos com sucesso.']);
-    }
-
-    protected function validateCampaign(Request $request, ?int $campaignId = null): array
-    {
-        return $request->validate([
-            'name'              => 'required|string|max:255',
-            'description'       => 'nullable|string',
-            'thank_you_message' => 'nullable|string|max:500',
-            'status'            => 'required|in:active,inactive',
-        ]);
-    }
-
-    /**
-     * Validação dos campos do formulário, compatível com _form.blade.php:
-     * - fields[*][label]
-     * - fields[*][field_name] (opcional)
-     * - fields[*][field_type] (text, email, number, tel, textarea, select)
-     * - fields[*][required]
-     * - fields[*][placeholder]
-     * - fields[*][options][] (textarea, linhas separadas por \n)
-     */
-    protected function validateFields(Request $request): array
-    {
-        $fields = $request->input('fields', []);
-
-        if (!is_array($fields)) {
-            $fields = [];
-        }
-
-        // Ordena pelo sort_order/order caso venha do formulário em JSON
-        $fields = array_values($fields);
-        usort($fields, function ($a, $b) {
-            $aOrder = (int) ($a['sort_order'] ?? $a['order'] ?? 0);
-            $bOrder = (int) ($b['sort_order'] ?? $b['order'] ?? 0);
-
-            return $aOrder <=> $bOrder;
-        });
-
-        if (count($fields) > self::FIELD_LIMIT) {
-            throw ValidationException::withMessages([
-                'fields' => 'Você excedeu o limite de ' . self::FIELD_LIMIT . ' campos.',
-            ]);
-        }
-
-        $validated = [];
-
-        foreach ($fields as $index => $field) {
-            $label       = trim($field['label'] ?? '');
-            $fieldName   = trim($field['field_name'] ?? '');
-            $type        = strtolower((string) ($field['field_type'] ?? ($field['type'] ?? 'text')));
-            $placeholder = trim($field['placeholder'] ?? '');
-
-            if ($label === '') {
-                throw ValidationException::withMessages([
-                    "fields.$index.label" => 'O rótulo do campo é obrigatório.',
-                ]);
-            }
-
-            if (strlen($label) > 255) {
-                throw ValidationException::withMessages([
-                    "fields.$index.label" => 'O rótulo do campo deve ter no máximo 255 caracteres.',
-                ]);
-            }
-
-            // tipos permitidos de acordo com o select do formulário
-            $allowedTypes = ['text', 'email', 'number', 'tel', 'textarea', 'select'];
-            if (!in_array($type, $allowedTypes, true)) {
-                throw ValidationException::withMessages([
-                    "fields.$index.field_type" => 'Tipo de campo inválido.',
-                ]);
-            }
-
-            // Trata opções do select
-            $options = $this->normalizeOptions($field['options'] ?? [], $type);
-
-            if ($type === 'select' && count($options) < 1) {
-                throw ValidationException::withMessages([
-                    "fields.$index.options" => 'Selecione pelo menos uma opção para o campo select.',
-                ]);
-            }
-
-            // Nome interno: se não veio, gera slug a partir do label
-            $name = $fieldName !== '' ? $fieldName : Str::slug($label, '_');
-
-            $sortOrder = (int) ($field['sort_order'] ?? $field['order'] ?? ($index + 1));
-
-            $validated[] = [
-                'label'       => $label,
-                'name'        => $name,
-                'type'        => $type,
-                'required'    => (bool) ($field['required'] ?? false),
-                'sort_order'  => $sortOrder,
-                'placeholder' => $placeholder,
-                'options'     => $options,
-            ];
-        }
-
-        return $validated;
-    }
-
-    protected function normalizeOptions($rawOptions, ?string $type = null): array
-    {
-        if (($type ?? '') !== 'select') {
-            return [];
-        }
-
-        if (is_array($rawOptions)) {
-            $rawString = implode("\n", $rawOptions);
-        } else {
-            $rawString = (string) $rawOptions;
-        }
-
-        $lines   = preg_split("/[\r\n]+/", $rawString);
-        $options = array_values(array_filter(array_map('trim', $lines)));
-
-        return $options;
-    }
-
-    protected function fieldRule(?string $type): string
-    {
-        $normalized = strtolower($type ?: 'text');
-
-        return match ($normalized) {
-            'email'    => 'email|max:255',
-            'number'   => 'numeric',
-            'tel'      => 'string|max:30',
-            'textarea' => 'string|max:2000',
-            default    => 'string|max:255',
-        };
-    }
-
-    /**
-     * Usa o alias global \LeadCampaign para evitar problema de namespace.
-     */
-    protected function persistFields(\LeadCampaign $campaign, array $fields): void
-    {
-        $campaign->fields()->delete();
-
-        foreach ($fields as $field) {
-            $campaign->fields()->create([
-                'label'       => $field['label'],
-                'field_name'  => $field['name'],
-                'field_type'  => $field['type'],
-                'required'    => $field['required'],
-                'sort_order'  => $field['sort_order'],
-                'options'     => $field['options'],
-                'placeholder' => $field['placeholder'] ?: null,
-            ]);
-        }
-    }
-
-    protected function uniqueSlug(string $name): string
-    {
-        $baseSlug = Str::slug($name);
-        $slug     = $baseSlug;
-        $counter  = 1;
-
-        while (\LeadCampaign::where('slug', $slug)->exists()) {
-            $slug = $baseSlug . '-' . $counter;
-            $counter++;
-        }
-
-        return $slug;
-    }
-
-    protected function findCampaign(int $id): \LeadCampaign
-    {
-        $user = auth()->user();
-
-        return \LeadCampaign::where('user_id', $user->id)
-            ->with('fields')
-            ->findOrFail($id);
-    }
-
-    protected function renderView(string $view, array $data = [])
-    {
-        foreach ($this->viewCandidates($view) as $candidate) {
-            if (view()->exists($candidate)) {
-                return view($candidate, $data);
-            }
-        }
-
-        $paths = [
-            resource_path('views/' . str_replace('.', '/', $view) . '.blade.php'),
-            resource_path('views/leads01/' . str_replace('.', '/', $view) . '.blade.php'),
-            base_path('plugins/leads01/resources/views/' . str_replace('.', '/', $view) . '.blade.php'),
-            base_path('plugins/leads01/views/' . str_replace('.', '/', $view) . '.blade.php'),
-        ];
-
-        foreach ($paths as $path) {
-            if (file_exists($path)) {
-                return view()->file($path, $data);
-            }
-        }
-
-        abort(404, "View [{$view}] not found for leads01.");
-    }
-
-    protected function viewCandidates(string $view): array
-    {
-        return [
-            "leads01.$view",
-            "leads01::{$view}",
-            "leads01::$view",
-            $view,
-        ];
-    }
-}
+    </script>
+</x-guest-layout>
+						
