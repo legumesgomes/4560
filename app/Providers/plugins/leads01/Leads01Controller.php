@@ -231,7 +231,14 @@ class Leads01Controller extends Controller
         ]);
 
         return back()
-            ->with('success', $campaign->thank_you_message ?: '');
+           $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
+        $thankYouMessage   = $configuredMessage !== '' ? $configuredMessage : '...';
+
+        session()->put("leads01_public_submitted.{$campaign->slug}", $thankYouMessage);
+
+        return redirect()
+            ->route('leads01.public.form', $campaign->slug)
+            ->with('success', $thankYouMessage);
     }
 
     public function saveFields(Request $request, int $id)
