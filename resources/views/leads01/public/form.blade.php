@@ -34,7 +34,7 @@
                         @endif
 
                         @if(!session('success'))
-                        <form method="POST" action="{{ route('leads01.submit', $campaign->slug) }}">
+                                <form method="POST" action="{{ route('leads01.public.submit', $campaign->slug) }}">
                             @csrf
 
 							 <fieldset @if($hasSuccess) disabled aria-disabled="true" @endif>
