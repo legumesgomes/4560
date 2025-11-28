@@ -31,6 +31,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cookie;
 
 class Leads01Controller extends Controller
 {
@@ -230,9 +231,34 @@ class Leads01Controller extends Controller
             'user_agent'  => (string) $request->header('User-Agent'),
         ]);
 
-        return redirect()
-            ->route('leads01.public.form', $campaign->slug)
-            ->with('success', $campaign->thank_you_message ?: 'Obrigado pelo envio.');
+		
+		
+		  $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
+        $thankYouMessage   = $configuredMessage !== ''
+            ? $configuredMessage
+            : 'Lead enviado com sucesso!';
+
+        session()->put("leads01_public_submitted.{$campaign->slug}", $thankYouMessage);
+
+        $fields = $campaign->fields()
+            ->orderBy('sort_order')
+            ->get();
+
+        return $this->renderView('public.form', compact('campaign', 'fields'))
+            ->with('success', $thankYouMessage);
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
     }
 
     public function saveFields(Request $request, int $id)
