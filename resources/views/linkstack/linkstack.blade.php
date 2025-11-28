@@ -1,5 +1,77 @@
 @extends('linkstack.layout')
 
+
+@push('linkstack-head-end')
+    <style>
+        /* Estilos das abas (perfil, catálogo e leads) */
+        .ls-tab-card {
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            overflow: hidden;
+        }
+
+        .ls-tab-header {
+            display: flex;
+            gap: 8px;
+            padding: 8px 8px 0;
+        }
+
+        .ls-tab-button {
+            flex: 1;
+            border: none;
+            border-radius: 10px 10px 0 0;
+            padding: 10px 12px;
+            font-weight: 600;
+            background: rgba(255, 255, 255, 0.16);
+            color: inherit;
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+
+        .ls-tab-button.active {
+            background: #ffffff;
+            color: #111111;
+        }
+
+        .ls-tab-card--solid {
+            background: #ffffff;
+            border-color: transparent;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        }
+
+        .ls-tab-card--solid .ls-tab-header {
+            background: #ffffff;
+        }
+
+        .ls-tab-card--solid .ls-tab-button {
+            background: #f6f6f6;
+            color: #111111;
+        }
+
+        .ls-tab-card--solid .ls-tab-button.active {
+            background: #ffffff;
+        }
+
+        .ls-tab-pane {
+            display: none;
+            padding: 12px;
+        }
+
+        .ls-tab-pane.active {
+            display: block;
+        }
+
+        .ls-tab-card--solid .ls-tab-pane {
+            background: #ffffff;
+            color: #111111;
+        }
+
+        #ls-tab-leads {
+            padding: 16px;
+        }
+    </style>
+@endpush
+
 @section('content')
     @push('linkstack-head')
         @include('linkstack.modules.meta')
@@ -174,13 +246,35 @@
                             <div class="py-3">
                                 <h2 class="h5 mb-3">{{ $leadCampaign->name }}</h2>
 
-                                @if($leadCampaign->description)
-                                    <p class="text-muted">{{ $leadCampaign->description }}</p>
-                                @endif
+  
+								
+								
+								
+								
+								  @php
+                                    $submissionKey   = 'leads01_submitted_' . $leadCampaign->slug;
+                                    $leadAlreadySent = session($submissionKey) || request()->cookie($submissionKey);
+                                     $thankYouCopy      = $leadCampaign->thank_you_message;
+                                @endphp
 
-                                @if(session('success'))
+                                @if(session('success') || $leadAlreadySent)
                                     <div class="alert alert-success">
-                                        {{ session('success') }}
+                                        {{ session('success') ?: $thankYouCopy }}
+								
+								
+								
+								
+								
+								
+								
+								
+								
+								
+								
+								
+								
+								
+								
                                     </div>
                                 @endif
 
@@ -288,7 +382,29 @@
         $hasLeads   = isset($leadsEnabled)
             ? ($leadsEnabled && !empty($leadCampaign))
             : (!empty($leadCampaign));
+ $activeTab = request('tab', $activeTab ?? 'links');
+        $activeTab = in_array($activeTab, ['links', 'catalog', 'leads'], true) ? $activeTab : 'links';
+
+        $leadSubmissionKey = null;
+        $leadAlreadySent   = false;
+        $thankYouCopy      = null;
+
+        if ($hasLeads && $leadCampaign) {
+            $leadSubmissionKey = 'leads01_submitted_' . $leadCampaign->slug;   $leadAlreadySent   = session($leadSubmissionKey)
+                || request()->cookie($leadSubmissionKey)
+                || session('success');
+            $thankYouCopy      = $leadCampaign->thank_you_message;
+
+            if (session('success') || session('error') || $leadAlreadySent || ($errors ?? collect())->any()) {
+                $activeTab = 'leads';
+            }
+        }
     @endphp
+
+
+
+
+
 
     @if($hasCatalog || $hasLeads)
         @push('linkstack-body-end')
