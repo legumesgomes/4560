@@ -34,15 +34,14 @@
                             </div>
                         @endif
 
-                        @if(!session('success'))
+                        @if(!$hasSubmitted)
                         <form method="POST" action="{{ route('leads01.public.submit', $campaign->slug) }}">
                             @csrf
 
                             @foreach($fields as $field)
                                 @php
-                                    $inputName = 'field_' . $field->id;
+                                    $inputName = $field->field_name ?? $field->name ?? ('field_' . $field->id);
                                     $type = $field->field_type ?? $field->type ?? 'text';
-
                                     $optionsRaw = $field->options ?? [];
                                     if (is_string($optionsRaw)) {
                                         $decoded = json_decode($optionsRaw, true);
@@ -59,12 +58,7 @@
                                 @endphp
 
                                 <div class="mb-3">
-                                    <label class="form-label">
-                                        {{ $field->label }}
-                                        @if($field->required)
-                                            <span class="text-danger">*</span>
-                                        @endif
-                                    </label>
+                                    <label class="form-label">{{ $field->label }} @if($field->required) <span class="text-danger">* </span> @endif</label>
 
                                     @switch($type)
                                         @case('email')
@@ -95,10 +89,10 @@
 
                             <button type="submit" class="btn btn-primary w-100">Enviar</button>
                         </form>
-                        @endif
-                    </div>
+                    @endif
                 </div>
             </div>
         </div>
     </div>
-</x-guest-layout>
+</div>
+@endsection
