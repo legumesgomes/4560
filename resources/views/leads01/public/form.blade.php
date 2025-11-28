@@ -10,14 +10,13 @@
                         @endif
 
                           @php
-                            $customThankYou = trim((string) ($campaign->thank_you_message ?? ''));
-                            $hasSuccess = session()->has('success');
-                            $thankYouMessage = $customThankYou !== ''
-                                ? $customThankYou
-                                : (string) session('success');
+                             $sessionThankYou = session()->get('leads01_public_submitted.' . $campaign->slug);
+                            $flashSuccess = session('success');
+                            $thankYouMessage = $sessionThankYou ?? $flashSuccess ?? '';
+                            $hasSubmitted = $sessionThankYou !== null || $flashSuccess !== null;
                         @endphp
 
-                        @if($hasSuccess && $thankYouMessage !== '')
+                         @if($hasSubmitted && $thankYouMessage !== '')
                             <div class="alert alert-success">{{ $thankYouMessage }}</div>
                         @if(session('error'))
                             <div class="alert alert-danger">{{ session('error') }}</div>
@@ -33,74 +32,90 @@
                             </div>
                         @endif
 
-                        @if(!session('success'))
-                                <form method="POST" action="{{ route('leads01.public.submit', $campaign->slug) }}">
-                            @csrf
+                         @if(!$hasSubmitted)
+                            <form method="POST" action="{{ route('leads01.public.submit', $campaign->slug) }}">
+                                @csrf
 
-							 <fieldset @if($hasSuccess) disabled aria-disabled="true" @endif>
-							
-							
-                            @foreach($fields as $field)
-                                @php
-                                    $inputName = 'field_' . $field->id;
-                                    $type = $field->field_type ?? $field->type ?? 'text';
+                                @foreach($fields as $field)
+                                    @php
+                                        $inputName = 'field_' . $field->id;
+                                        $type = $field->field_type ?? $field->type ?? 'text';
 
-                                    $optionsRaw = $field->options ?? [];
-                                    if (is_string($optionsRaw)) {
-                                        $decoded = json_decode($optionsRaw, true);
-                                        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-                                            $optionsRaw = $decoded;
-                                        } else {
-                                            $optionsRaw = preg_split("/[\r\n]+/", $optionsRaw);
+                                        $optionsRaw = $field->options ?? [];
+                                        if (is_string($optionsRaw)) {
+                                            $decoded = json_decode($optionsRaw, true);
+                                            if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+                                                $optionsRaw = $decoded;
+                                            } else {
+                                                $optionsRaw = preg_split("/[\r\n]+/", $optionsRaw);
+                                            }
                                         }
-                                    }
-                                    $options = collect($optionsRaw)
-                                        ->filter(fn($opt) => trim((string) $opt) !== '')
-                                        ->map(fn($opt) => trim((string) $opt))
-                                        ->values();
-                                @endphp
+                                        $options = collect($optionsRaw)
+                                            ->filter(fn($opt) => trim((string) $opt) !== '')
+                                            ->map(fn($opt) => trim((string) $opt))
+                                            ->values();
+                                    @endphp
 
-                                <div class="mb-3">
-                                    <label class="form-label">
-                                        {{ $field->label }}
-                                        @if($field->required)
-                                            <span class="text-danger">*</span>
-                                        @endif
-                                    </label>
+                                    <div class="mb-3">
+                                        <label class="form-label">
+                                            {{ $field->label }}
+                                            @if($field->required)
+                                                <span class="text-danger">*</span>
+                                            @endif
+                                        </label>
 
-                                    @switch($type)
-                                        @case('email')
-                                            <input type="email" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="150">
-                                            @break
-                                        @case('number')
-                                            <input type="number" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>
-                                            @break
-                                        @case('tel')
-                                            <input type="tel" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="30">
-                                            @break
-                                        @case('textarea')
-                                            <textarea name="{{ $inputName }}" class="form-control" rows="3" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>{{ old($inputName) }}</textarea>
-                                            @break
-                                        @case('select')
-                                            <select name="{{ $inputName }}" class="form-select" @if($field->required) required @endif>
-                                                <option value="">Selecione...</option>
-                                                @foreach($options as $option)
-                                                    <option value="{{ $option }}" {{ old($inputName) == $option ? 'selected' : '' }}>{{ $option }}</option>
-                                                @endforeach
-                                            </select>
-                                            @break
-                                        @default
-                                            <input type="text" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="255">
-                                    @endswitch
-                                </div>
-                            @endforeach
-</fieldset>
+                                        @switch($type)
+                                            @case('email')
+                                                <input type="email" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="150">
+                                                @break
+                                            @case('number')
+                                                <input type="number" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>
+                                                @break
+                                            @case('tel')
+                                                <input type="tel" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="30">
+                                                @break
+                                            @case('textarea')
+                                                <textarea name="{{ $inputName }}" class="form-control" rows="3" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif>{{ old($inputName) }}</textarea>
+                                                @break
+                                            @case('select')
+                                                <select name="{{ $inputName }}" class="form-select" @if($field->required) required @endif>
+                                                    <option value="">Selecione...</option>
+                                                    @foreach($options as $option)
+                                                        <option value="{{ $option }}" {{ old($inputName) == $option ? 'selected' : '' }}>{{ $option }}</option>
+                                                    @endforeach
+                                                </select>
+                                                @break
+                                            @default
+                                                <input type="text" name="{{ $inputName }}" class="form-control" value="{{ old($inputName) }}" placeholder="{{ $field->placeholder }}" @if($field->required) required @endif maxlength="255">
+                                        @endswitch
+                                    </div>
+                                @endforeach
 
-                            <button type="submit" class="btn btn-primary w-100" @if($hasSuccess) disabled aria-disabled="true" @endif>
-                                {{ $hasSuccess ? 'Enviado' : 'Enviar' }}
-                            </button>
-                        </form>
+                                <button type="submit" class="btn btn-primary w-100">
+                                    Enviar
+                                </button>
+                            </form>
                         @endif
+						
+						
+						
+						
+						
+                             
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
+						
                     </div>
                 </div>
             </div>
