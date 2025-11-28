@@ -164,6 +164,7 @@
 
             form.addEventListener('submit', async (event) => {
                 event.preventDefault();
+				event.stopPropagation();
                 clearMessages();
                 toggleButton(true, 'Enviando...');
 
@@ -174,6 +175,7 @@
                             'Accept': 'application/json',
                             'X-Requested-With': 'XMLHttpRequest',
                         },
+						 credentials: 'same-origin',
                         body: new FormData(form),
                     });
 
