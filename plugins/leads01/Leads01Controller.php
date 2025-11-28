@@ -227,7 +227,29 @@ class Leads01Controller extends Controller
             $inputMap[$field->id] = $inputName;
         }
 
-        $validated = $request->validate($rules);
+         $validator = validator($request->all(), $rules);
+        if ($validator->fails()) {
+            if ($request->expectsJson()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+
+            $fields = $campaign->fields()
+                ->orderBy('sort_order')
+                ->get();
+
+            $view = $this->renderView('public.form', [
+                'campaign'  => $campaign,
+                'fields'    => $fields,
+                'oldInput'  => $request->all(),
+            ]);
+
+            return response(
+                $view->with('errors', (new \Illuminate\Support\ViewErrorBag())->put('default', $validator->errors())),
+                422
+            );
+        }
+
+        $validated = $validator->validated();
 
         $entryData = [];
         foreach ($campaign->fields as $field) {
