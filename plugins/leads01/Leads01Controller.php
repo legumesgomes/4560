@@ -183,7 +183,16 @@ class Leads01Controller extends Controller
             ->latest()
             ->get();
 
-        return $this->renderView('public.list', compact('user', 'campaigns'));
+         $flash = session('leads01_profile_success');
+        $profileSuccess = is_array($flash) && ($flash['user_id'] ?? null) === $user->id
+            ? $flash
+            : null;
+
+        return $this->renderView('public.list', [
+            'user'            => $user,
+            'campaigns'       => $campaigns,
+            'profileSuccess'  => $profileSuccess,
+        ]);
     }
 
     public function publicForm(string $slug)
@@ -239,6 +248,13 @@ class Leads01Controller extends Controller
             : 'Lead enviado com sucesso!';
 
         session()->put("leads01_public_submitted.{$campaign->slug}", $thankYouMessage);
+		
+		session()->flash('leads01_profile_success', [
+            'user_id'  => $campaign->user_id,
+            'campaign' => $campaign->name,
+            'slug'     => $campaign->slug,
+            'message'  => $thankYouMessage,
+        ]);
 
         $fields = $campaign->fields()
             ->orderBy('sort_order')
