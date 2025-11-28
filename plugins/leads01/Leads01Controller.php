@@ -217,19 +217,28 @@ class Leads01Controller extends Controller
 
         $rules = [];
         foreach ($campaign->fields as $field) {
-            $baseRule   = $field->required ? 'required' : 'nullable';
-            $fieldType  = $field->field_type ?? $field->type ?? 'text';
-            $rules['field_' . $field->id] = $baseRule . '|' . $this->fieldRule($fieldType);
+ $inputMap = [];
+        foreach ($campaign->fields as $field) {
+            $baseRule  = $field->required ? 'required' : 'nullable';
+            $fieldType = $field->field_type ?? $field->type ?? 'text';
+            $inputName = $this->resolveInputKey($request, $field);
+
+            $rules[$inputName] = $baseRule . '|' . $this->fieldRule($fieldType);
+            $inputMap[$field->id] = $inputName;
         }
 
         $validated = $request->validate($rules);
 
         $entryData = [];
         foreach ($campaign->fields as $field) {
+            $inputName = $inputMap[$field->id] ?? $this->resolveInputKey($request, $field);
+            $value = str_contains($inputName, '.')
+                ? data_get($validated, $inputName)
+                : ($validated[$inputName] ?? null);
             $key = $field->field_name
                 ?? ($field->name ?? ('field_' . $field->id));
 
-            $entryData[$key] = $validated['field_' . $field->id] ?? null;
+            $entryData[$key] = $value;
         }
 
         \LeadEntry::create([
@@ -260,21 +269,34 @@ class Leads01Controller extends Controller
             ->orderBy('sort_order')
             ->get();
 
+ if ($request->expectsJson()) {
+            return response()->json(['message' => $thankYouMessage]);
+        }
+
         return $this->renderView('public.form', compact('campaign', 'fields'))
             ->with('success', $thankYouMessage);
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
-		
+    }
+
+    protected function resolveInputKey(Request $request, $field): string
+    {
+        $candidates = [
+            $field->field_name ?? null,
+            $field->name ?? null,
+            'field_' . $field->id,
+            'fields.' . $field->id,
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (!$candidate) {
+                continue;
+            }
+
+            if ($request->has($candidate)) {
+                return $candidate;
+            }
+        }
+
+        return 'field_' . $field->id;
     }
 
     public function saveFields(Request $request, int $id)
