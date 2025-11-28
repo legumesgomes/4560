@@ -164,7 +164,7 @@ class Leads01Controller extends Controller
         $campaign = $this->findCampaign($id);
 
         $entry = $campaign->entries()
-            ->with('fields')
+            ->with(['fields', 'user'])
             ->findOrFail($entryId);
 
         return $this->renderView('leads.show', [
@@ -287,15 +287,16 @@ class Leads01Controller extends Controller
             'message'  => $thankYouMessage,
         ]);
 
-        $fields = $campaign->fields()
-            ->orderBy('sort_order')
-            ->get();
-
- if ($request->expectsJson()) {
+if ($request->expectsJson()) {
             return response()->json(['message' => $thankYouMessage]);
         }
 
-        return $this->renderView('public.form', compact('campaign', 'fields'))
+         $username = $campaign->user->name ?? null;
+        $redirectRoute = $username
+            ? route('leads01.public', ['username' => $username])
+            : url()->previous();
+
+        return redirect($redirectRoute)
             ->with('success', $thankYouMessage);
     }
 
