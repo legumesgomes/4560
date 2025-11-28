@@ -182,7 +182,16 @@ class Leads01Controller extends Controller
             ->latest()
             ->get();
 
-        return $this->renderView('public.list', compact('user', 'campaigns'));
+         $flash = session('leads01_profile_success');
+        $profileSuccess = is_array($flash) && ($flash['user_id'] ?? null) === $user->id
+            ? $flash
+            : null;
+
+        return $this->renderView('public.list', [
+            'user'            => $user,
+            'campaigns'       => $campaigns,
+            'profileSuccess'  => $profileSuccess,
+        ]);
     }
 
     public function publicForm(string $slug)
@@ -230,14 +239,24 @@ class Leads01Controller extends Controller
             'user_agent'  => (string) $request->header('User-Agent'),
         ]);
 
-        return back()
-           $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
-        $thankYouMessage   = $configuredMessage !== '' ? $configuredMessage : '...';
+ $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
+        $thankYouMessage   = $configuredMessage !== '' ? $configuredMessage : 'Formulário enviado com sucesso!';
 
         session()->put("leads01_public_submitted.{$campaign->slug}", $thankYouMessage);
+		
+		
+		session()->flash('leads01_profile_success', [
+            'user_id'  => $campaign->user_id,
+            'campaign' => $campaign->name,
+            'slug'     => $campaign->slug,
+            'message'  => $thankYouMessage,
+        ]);
 
-        return redirect()
-            ->route('leads01.public.form', $campaign->slug)
+        $fields = $campaign->fields()
+            ->orderBy('sort_order')
+            ->get();
+
+        return $this->renderView('public.form', compact('campaign', 'fields'))
             ->with('success', $thankYouMessage);
     }
 
