@@ -230,9 +230,8 @@ class Leads01Controller extends Controller
             'user_agent'  => (string) $request->header('User-Agent'),
         ]);
 
-        return redirect()
-            ->route('leads01.public.form', $campaign->slug)
-            ->with('success', $campaign->thank_you_message ?: 'Obrigado pelo envio.');
+        return back()
+            ->with('success', $campaign->thank_you_message ?: '');
     }
 
     public function saveFields(Request $request, int $id)
