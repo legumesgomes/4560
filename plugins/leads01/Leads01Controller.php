@@ -228,8 +228,28 @@ class Leads01Controller extends Controller
         }
 
          $validator = validator($request->all(), $rules);
+		
+		
+		
+		
+		
+		
+		
+		
+		$isAjax = $request->expectsJson() || $request->ajax();
+
         if ($validator->fails()) {
-            if ($request->expectsJson()) {
+            if ($isAjax) {
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
                 return response()->json(['errors' => $validator->errors()], 422);
             }
 
@@ -289,7 +309,7 @@ class Leads01Controller extends Controller
 
         session()->flash('success', $thankYouMessage);
 
-        if ($request->expectsJson()) {
+        if ($isAjax) {
             return response()->json(['message' => $thankYouMessage]);
         }
 		
