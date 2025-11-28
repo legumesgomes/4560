@@ -1,0 +1,11 @@
+{
+  "name": "Leads01",
+  "slug": "leads01",
+  "version": "1.0.0",
+  "provider": "App\\\\Providers\\\\plugins\\\\leads01\\\\Providers\\\\Leads01ServiceProvider",
+  "menu": {
+    "label": "Leads",
+    "route": "leads01.index",
+    "icon": "icon-leads"
+  }
+}
