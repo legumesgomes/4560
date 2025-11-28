@@ -31,6 +31,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Cookie;
 
 class Leads01Controller extends Controller
 {
@@ -211,26 +212,37 @@ class Leads01Controller extends Controller
     {
         $campaign = \LeadCampaign::where('slug', $slug)
             ->where('status', 'active')
-            ->with('fields')
+
+			
+			
+			
+			 ->with(['fields', 'user'])
             ->firstOrFail();
 
         $rules = [];
-		 $inputMap = [];
+        $inputMap = [];
         foreach ($campaign->fields as $field) {
-
-		 $baseRule  = $field->required ? 'required' : 'nullable';
+            $baseRule  = $field->required ? 'required' : 'nullable';
             $fieldType = $field->field_type ?? $field->type ?? 'text';
             $inputName = $this->resolveInputKey($request, $field);
 
             $rules[$inputName] = $baseRule . '|' . $this->fieldRule($fieldType);
-            $inputMap[$field->id] = $inputName;	
-			
-			
-			
-			
+            $inputMap[$field->id] = $inputName;
         }
 
-         $validator = validator($request->all(), $rules);
+        $validator = validator($request->all(), $rules);
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
+			
         if ($validator->fails()) {
             if ($request->expectsJson()) {
                 return response()->json(['errors' => $validator->errors()], 422);
@@ -257,10 +269,13 @@ class Leads01Controller extends Controller
         $entryData = [];
         foreach ($campaign->fields as $field) {
 			
-			$inputName = $inputMap[$field->id] ?? $this->resolveInputKey($request, $field);
+
+			
+			      $inputName = $inputMap[$field->id] ?? $this->resolveInputKey($request, $field);
             $value = str_contains($inputName, '.')
                 ? data_get($validated, $inputName)
                 : ($validated[$inputName] ?? null);
+			
 			
 			
             $key = $field->field_name
@@ -291,35 +306,44 @@ class Leads01Controller extends Controller
             'ip_address'  => $request->ip(),
             'user_agent'  => (string) $request->header('User-Agent'),
         ]);
-
- $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
-        $thankYouMessage   = $configuredMessage !== '' ? $configuredMessage : 'Formulário enviado com sucesso!';
+		
+		
+		
+		
+		
+		
+		
+		  $configuredMessage = trim((string) ($campaign->thank_you_message ?? ''));
+        $thankYouMessage = $configuredMessage !== ''
+            ? $configuredMessage
+            : 'Lead enviado com sucesso!';
 
         session()->put("leads01_public_submitted.{$campaign->slug}", $thankYouMessage);
-		
-		
-		session()->flash('leads01_profile_success', [
+
+        session()->flash('leads01_profile_success', [
             'user_id'  => $campaign->user_id,
             'campaign' => $campaign->name,
             'slug'     => $campaign->slug,
             'message'  => $thankYouMessage,
         ]);
 
+        session()->flash('success', $thankYouMessage);
+
+        if ($request->expectsJson()) {
+            return response()->json(['message' => $thankYouMessage]);
+        }
+
         $fields = $campaign->fields()
             ->orderBy('sort_order')
             ->get();
-		
-		
-		 if ($request->expectsJson()) {
-            return response()->json(['message' => $thankYouMessage]);
-        }
-		
 
-        return $this->renderView('public.form', compact('campaign', 'fields'))
-            ->with('success', $thankYouMessage);
+        return $this->renderView('public.form', [
+            'campaign' => $campaign,
+            'fields'   => $fields,
+        ])->with('success', $thankYouMessage);
     }
-	
-	  protected function resolveInputKey(Request $request, $field): string
+
+    protected function resolveInputKey(Request $request, $field): string
     {
         $candidates = [
             $field->field_name ?? null,
@@ -340,6 +364,16 @@ class Leads01Controller extends Controller
 
         return 'field_' . $field->id;
     }
+		
+		
+		
+		
+		
+		
+		
+		
+		
+		
 
     public function saveFields(Request $request, int $id)
     {
