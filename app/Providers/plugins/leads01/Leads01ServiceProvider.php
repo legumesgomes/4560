@@ -18,6 +18,12 @@ class Leads01ServiceProvider extends ServiceProvider
             if (!class_exists($modelClass)) {
                 require_once "{$modelsPath}/{$model}.php";
             }
+
+            // Garante alias globais (\\LeadCampaign, etc.) para uso em outros controllers
+            $globalAlias = "\\{$model}";
+            if (!class_exists($globalAlias, false)) {
+                class_alias($modelClass, $globalAlias);
+            }
         }
 
         // Garante que o controller esteja disponível
@@ -44,7 +50,10 @@ class Leads01ServiceProvider extends ServiceProvider
 
         $this->loadRoutesFrom($pluginPath . '/routes/web.php');
 
-        View::addNamespace('leads01', $pluginPath . '/views');
+        View::addNamespace('leads01', [
+            $pluginPath . '/resources/views',
+            $pluginPath . '/views',
+        ]);
 
         $this->publishes([
             $pluginPath . '/views' => resource_path('views/leads01'),

@@ -75,7 +75,7 @@
             errorsBox.classList.add('d-none');
             successBox.classList.add('d-none');
 
-            fetch("{{ route('leads01.submit', $campaign->slug) }}", {
+            fetch("{{ route('leads01.public.submit', $campaign->slug) }}", {
                 method: 'POST',
                 headers: {
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'

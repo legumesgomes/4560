@@ -27,8 +27,8 @@
                         <th>Nome</th>
                         <th>Slug</th>
                         <th>Status</th>
+                        <th>Perfil</th>
                         <th>Leads</th>
-						 <th class="text-center">Visível</th> 
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
@@ -44,20 +44,21 @@
                                     <span class="badge bg-secondary">Inativa</span>
                                 @endif
                             </td>
+                            <td>
+                                @if((int) $campaign->visivel === 1)
+                                    <span class="badge bg-primary">Visível</span>
+                                @else
+                                    <span class="badge bg-light text-muted">Oculta</span>
+                                @endif
+                            </td>
                             <td>{{ $campaign->entries_count }}</td>
-							
-							 <td class="text-center">
-                    <form action="{{ route('leads01.campaign.toggle-visible', $campaign->id) }}" method="POST">
-                        @csrf
-                        <button type="submit"
-                                class="btn btn-sm {{ (int) $campaign->visivel === 1 ? 'btn-success' : 'btn-outline-secondary' }}">
-                            {{ (int) $campaign->visivel === 1 ? 'Visível' : 'Tornar visível' }}
-                        </button>
-                    </form>
-                </td>
-							
-							
                             <td class="text-end">
+                                <form action="{{ route('leads01.campaign.toggle-visible', $campaign->id) }}" method="POST" class="d-inline">
+                                    @csrf
+                                    <button type="submit" class="btn btn-sm btn-outline-{{ $campaign->visivel ? 'secondary' : 'success' }}">
+                                        {{ $campaign->visivel ? 'Ocultar do perfil' : 'Mostrar no perfil' }}
+                                    </button>
+                                </form>
                                 <a href="{{ route('leads01.leads', $campaign->id) }}" class="btn btn-sm btn-outline-info">Leads</a>
                                 <a href="{{ route('leads01.edit', $campaign->id) }}" class="btn btn-sm btn-outline-primary">Editar</a>
                                 <form action="{{ route('leads01.destroy', $campaign->id) }}" method="POST" class="d-inline" onsubmit="return confirm('Excluir campanha e todos os leads?');">
